@@ -44,12 +44,13 @@
 # #     data2.append(data[i])
 # # print
 
-import os
-
-Gesturetype = ['666', 'stop', 'yech', 'ok']
-
-for i in Gesturetype:
-    os.mkdir('D:\pycharm-work\opencv-test\CNN识别手势\手势合集\\' + i)
+# import os
+#
+# Gesturetype = ['666', 'stop', 'yech', 'ok']
+#
+# for i in Gesturetype:
+#     os.mkdir('D:\pycharm-work\opencv-test\CNN识别手势\手势合集\\' + i)
 
 # import random
 # print(random.randrange(0, 50))
+print(5, '哈哈哈')

@@ -1,3 +1,4 @@
 '.jpg' 
 '*.h5' 
 '*.jpg' 
+"__pycache__"

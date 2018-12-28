@@ -4,8 +4,8 @@ from PIL import Image
 import numpy as np
 
 
-path = '手势合集/'
-Gesturetype = ['666', 'stop', 'yech', 'ok']
+path = 'D:\pycharm-work\opencv-test\CNN_Gesture_categorizer\Gesture_predict\\'
+Gesturetype = ['666', 'stop', 'yech', 'ok', 'one']
 
 def FileRename(path, Gesture_set):
     num_count = 0
@@ -28,6 +28,15 @@ def File_to_train_folder(path, Gesture_set):
             # img_open = img_open.resize((150, 150), Image.BILINEAR)
             img_open.save('D:\pycharm-work\opencv-test\CNN_Gesture_categorizer\Gesture_train\\' + phone)
 
+def lable_rename(path):
+    for i in os.listdir(path):
+        a = i.split('_')[0]
+        os.rename(path + i, path + str(int(i.split('_')[0])-1) + '_' + i.split('_')[1])
 
-File_to_train_folder(path, Gesturetype)
+
+
+
+
+lable_rename(path=path)
+# File_to_train_folder(path, Gesturetype)
 

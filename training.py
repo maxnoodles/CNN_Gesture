@@ -10,12 +10,13 @@ from keras import backend as K
 
 class Training():
 
-    def __init__(self, batch_size, epochs, categories, train_folder, test_folder):
+    def __init__(self, batch_size, epochs, categories, train_folder, test_folder, model_name):
         self.batch_size = batch_size
         self.epochs = epochs
         self.categories = categories
         self.train_folder = train_folder
         self.test_folder = test_folder
+        self.model_name = model_name
         self.shape1 = 100
         self.shape2 = 100
 
@@ -23,7 +24,7 @@ class Training():
         img_list = []
         lable_list = []
         for file in os.listdir(folder):
-            img = Image.open(self.train_folder + file)
+            img = Image.open(folder + file)
             img = np.array(img).reshape(self.shape1, self.shape2, 1)
             img_list.append(img)
             lable_list.append(int(file.split('_')[0]))
@@ -97,12 +98,12 @@ class Training():
             validation_data=(test_img_list, test_lable_list)
         )
 
-        # model.save('./Gesture.h5')
+        model.save(self.model_name)
 
-
-import os
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-train = Training(batch_size=32, epochs=3, categories=4, train_folder='Gesture_train/', test_folder='Gesture_predict/')
+train = Training(batch_size=32, epochs=15, categories=5,
+                 train_folder='Gesture_train/', test_folder='Gesture_predict/',
+                 model_name='./Gesture2.0.h5')
 train.train()
 K.clear_session()

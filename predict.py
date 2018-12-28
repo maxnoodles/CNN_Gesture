@@ -5,8 +5,8 @@ import numpy as np
 from PIL import Image
 import os
 
-model = load_model('Gesture.h5')
-Gesturetype = ['666', 'stop', 'yech', 'ok']
+model = load_model('Gesture1.0.h5')
+Gesturetype = ['666', 'stop', 'yech', 'ok', 'one']
 path = 'D:\pycharm-work\opencv-test\CNN_Gesture_categorizer\Gesture_predict\\'
 file_count = 0
 
