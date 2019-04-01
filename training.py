@@ -1,4 +1,5 @@
 import numpy as np
+import pydot
 from keras.models import Sequential
 from keras.layers import Convolution2D, Flatten, Dropout, MaxPool2D, Dense, Activation, BatchNormalization
 from keras.optimizers import Adam
@@ -8,6 +9,14 @@ import os
 import random
 from keras import backend as K
 from keras import regularizers
+from matplotlib import pyplot as plt
+from keras.utils.vis_utils import plot_model
+import re
+
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix     # 混淆矩阵
+
+import itertools
 
 
 class Training():
@@ -30,7 +39,7 @@ class Training():
             img = Image.open(folder + file)
             img = np.array(img).reshape(self.shape1, self.shape2, 1)
             img_list.append(img)
-            lable_list.append(int(file.split('_')[0]))
+            lable_list.append(int(file.split('_')[1][0]))
         return img_list, lable_list
 
     def train(self):
@@ -39,12 +48,12 @@ class Training():
         test_img_list, test_lable_list = self.read_train_images(folder=self.test_folder)
         test_img_list, test_lable_list = np.array(test_img_list).astype('float32') / 255, np.array(test_lable_list)
 
-        index = [i for i in range(len(train_img_list))]
-        random.shuffle(index)
-        for i in range(len(train_img_list)):
-            j = index[i]
-            train_img_list[i], train_img_list[j] = train_img_list[j], train_img_list[i]
-            train_lable_list[i], train_lable_list[j] = train_lable_list[j], train_lable_list[i]
+        # index = [i for i in range(len(train_img_list))]
+        # random.shuffle(index)
+        # for i in range(len(train_img_list)):
+        #     j = index[i]
+        #     train_img_list[i], train_img_list[j] = train_img_list[j], train_img_list[i]
+        #     train_lable_list[i], train_lable_list[j] = train_lable_list[j], train_lable_list[i]
 
         train_img_list = np.array(train_img_list).astype('float32') / 255
         train_lable_list = np.array(train_lable_list)
@@ -59,39 +68,40 @@ class Training():
             kernel_size=(3, 3),
             padding='valid',
             input_shape=(self.shape1, self.shape2, 1),
+            name = 'conv2d_1'
         ))
         model.add(BatchNormalization())
 
-        model.add(Activation('relu'))
+        model.add(Activation('relu', name='activation_1'))
 
         model.add(Convolution2D(
             filters=32,
             kernel_size=(3, 3),
-
+            name='conv2d_2'
         ))
         model.add(BatchNormalization())
 
-        model.add(Activation('relu'))
+        model.add(Activation('relu', name='activation_2'))
         model.add(MaxPool2D(
             pool_size=(2, 2),
             strides=(2, 2),
             padding='valid',
+            name='max_pooling2d_1'
         ))
-        model.add(Dropout(0.3))
+        model.add(Dropout(0.5, name='dropout_1'))
 
-        model.add(Flatten())
+        model.add(Flatten(name='flatten_1'))
 
-        model.add(Dense(128))
+        model.add(Dense(128, name='dense_1'))
         model.add(BatchNormalization())
-        model.add(Activation('relu'))
-        model.add(Dropout(0.3))
+        model.add(Activation('relu', name='activation_3'))
+        model.add(Dropout(0.5, name='dropout_2'))
 
         model.add(Dense(self.categories,
                         kernel_regularizer=regularizers.l2(0.01),
                         # activity_regularizer=regularizers.l1(0.001)
-                        ))
-        model.add(BatchNormalization())
-        model.add(Activation('softmax'))
+                        name='dense_2'))
+        model.add(Activation('softmax', name='activation_4'))
 
 
 
@@ -103,7 +113,15 @@ class Training():
             metrics=['accuracy'],
         )
 
-        model.fit(
+        # Model summary
+        model.summary()
+        # Model conig details
+        model.get_config()
+
+        plot_model(model, to_file='model.png', show_shapes=True)
+
+
+        hist = model.fit(
             x=train_img_list,
             y=train_lable_list,
             epochs=self.epochs,
@@ -113,13 +131,78 @@ class Training():
             validation_data=(test_img_list, test_lable_list)
         )
 
+
+        pred_y = model.predict(test_img_list)
+        pred_label = np.argmax(pred_y, axis=1)
+        true_label = np.argmax(test_lable_list, axis=1)
+
+        confusion_mat = confusion_matrix(true_label, pred_label)
+
+        self.plot_sonfusion_matrix(confusion_mat, classes=range(5))
+
+        self.visualizeHis(hist)
+
         model.save(self.model_name)
+
+    def plot_sonfusion_matrix(self, cm, classes, normalize=False, title='Confusion matrix', cmap=plt.cm.Blues):
+        plt.figure(1, figsize=(7, 5))
+
+        plt.imshow(cm, interpolation='nearest', cmap=cmap)
+        plt.title(title)
+        plt.colorbar()
+
+        Gesturetype = ['666', 'yech', 'stop', 'punch', 'OK']
+
+        tick_marks = np.arange(len(classes))
+        # plt.xticks(tick_marks, classes, rotation=45)
+        plt.xticks(tick_marks, Gesturetype, rotation=45)
+        # plt.yticks(tick_marks, classes)
+        plt.yticks(tick_marks, Gesturetype)
+        if normalize:
+            cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        thresh = cm.max() / 2.0
+        for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+            plt.text(j, i, cm[i, j], horizontalalignment='center', color='white' if cm[i, j] > thresh else 'black')
+        plt.tight_layout()
+        plt.ylabel('True label')
+        plt.xlabel('Predict label')
+
+    def visualizeHis(self, hist):
+        # visualizing losses and accuracy
+
+        train_loss = hist.history['loss']
+        val_loss = hist.history['val_loss']
+        train_acc = hist.history['acc']
+        val_acc = hist.history['val_acc']
+        xc = range(self.epochs)
+
+        plt.figure(2, figsize=(7, 5))
+        plt.plot(xc, train_loss)
+        plt.plot(xc, val_loss)
+        plt.xlabel('num of Epochs')
+        plt.ylabel('loss')
+        plt.title('train_loss vs val_loss')
+        plt.grid(True)
+        plt.legend(['train', 'val'])
+        # print plt.style.available # use bmh, classic,ggplot for big pictures
+        # plt.style.use(['classic'])
+
+        plt.figure(3, figsize=(7, 5))
+        plt.plot(xc, train_acc)
+        plt.plot(xc, val_acc)
+        plt.xlabel('num of Epochs')
+        plt.ylabel('accuracy')
+        plt.title('train_acc vs val_acc')
+        plt.grid(True)
+        plt.legend(['train', 'val'], loc=4)
+
+        plt.show()
 
 
 if __name__ == "__main__":
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-    train = Training(batch_size=32, epochs=5, categories=5,
+    train = Training(batch_size=32, epochs=20, categories=5,
                      train_folder='Gesture_train/', test_folder='Gesture_predict/',
-                     model_name='2')
+                     model_name='Gesture_2.h5')
     train.train()
     K.clear_session()
