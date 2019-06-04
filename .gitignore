@@ -1,4 +1,5 @@
-'.jpg' 
-'*.h5' 
-'*.jpg' 
-"__pycache__"
+__pycache__
+test.py
+*.h5
+文件处理.py
+visualization_image/

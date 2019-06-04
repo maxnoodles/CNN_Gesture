@@ -13,7 +13,6 @@ from matplotlib import pyplot as plt
 from keras.utils.vis_utils import plot_model
 import re
 
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix     # 混淆矩阵
 
 import itertools
@@ -21,18 +20,27 @@ import itertools
 
 class Training():
 
-    def __init__(self, batch_size, epochs, categories, train_folder, test_folder, model_name):
+    def __init__(self, batch_size, epochs, categories, train_folder, test_folder, model_name, type):
+        # 批处理数量
         self.batch_size = batch_size
+        # 训练次数
         self.epochs = epochs
+        # 分类个数
         self.categories = categories
+        # 训练集文件夹
         self.train_folder = train_folder
+        # 测试集文件夹
         self.test_folder = test_folder
+        # 模型名
         self.model_name = model_name
+        # 手势类型
+        self.type = type
+        # 图片尺寸
         self.shape1 = 100
         self.shape2 = 100
 
     def read_train_images(self, folder):
-        # 返回图像和标签
+        """从文件夹中读取图像和标签，放回图像列表和标签列表"""
         img_list = []
         lable_list = []
         for file in os.listdir(folder):
@@ -46,8 +54,10 @@ class Training():
         train_img_list, train_lable_list = self.read_train_images(folder=self.train_folder)
 
         test_img_list, test_lable_list = self.read_train_images(folder=self.test_folder)
+        # 测试集图像归一化，并将图像和标签转化为numpy中的array格式
         test_img_list, test_lable_list = np.array(test_img_list).astype('float32') / 255, np.array(test_lable_list)
 
+        # 手动打乱图像顺序
         # index = [i for i in range(len(train_img_list))]
         # random.shuffle(index)
         # for i in range(len(train_img_list)):
@@ -55,14 +65,17 @@ class Training():
         #     train_img_list[i], train_img_list[j] = train_img_list[j], train_img_list[i]
         #     train_lable_list[i], train_lable_list[j] = train_lable_list[j], train_lable_list[i]
 
+        # 训练集图像归一化
         train_img_list = np.array(train_img_list).astype('float32') / 255
         train_lable_list = np.array(train_lable_list)
 
+        # 训练集和测试集的标签转化独热编码
         train_lable_list = np_utils.to_categorical(train_lable_list, self.categories)
         test_lable_list = np_utils.to_categorical(test_lable_list, self.categories)
 
+        # keras序贯模型，不分叉
         model = Sequential()
-
+        # 卷积层1，个数32，尺寸3*3，填充方式valid，步长默认1*1
         model.add(Convolution2D(
             filters=32,
             kernel_size=(3, 3),
@@ -70,57 +83,60 @@ class Training():
             input_shape=(self.shape1, self.shape2, 1),
             name = 'conv2d_1'
         ))
+        # 批规范化处理
         model.add(BatchNormalization())
-
+        # 激活函数relu
         model.add(Activation('relu', name='activation_1'))
-
+        # 卷积层2，个数32，尺寸3*3，填充方式valid，步长默认1*1
         model.add(Convolution2D(
             filters=32,
             kernel_size=(3, 3),
             name='conv2d_2'
         ))
         model.add(BatchNormalization())
-
         model.add(Activation('relu', name='activation_2'))
+
+        # 池化层，尺寸2*2，步长为2*2，填充方式为valid
         model.add(MaxPool2D(
             pool_size=(2, 2),
             strides=(2, 2),
             padding='valid',
             name='max_pooling2d_1'
         ))
+        # dropout层，失活系数0.5
         model.add(Dropout(0.5, name='dropout_1'))
-
+        # 转化为一维矩阵
         model.add(Flatten(name='flatten_1'))
-
+        # 全连接层，128个神经元
         model.add(Dense(128, name='dense_1'))
         model.add(BatchNormalization())
         model.add(Activation('relu', name='activation_3'))
         model.add(Dropout(0.5, name='dropout_2'))
 
+        # 分类层，L2正则优化
         model.add(Dense(self.categories,
                         kernel_regularizer=regularizers.l2(0.01),
-                        # activity_regularizer=regularizers.l1(0.001)
                         name='dense_2'))
+        # 分类层，激活函数sofomax
         model.add(Activation('softmax', name='activation_4'))
 
-
-
+        # 自适应学习率的算法adam
         adam = Adam(lr=0.001)
 
+        # 配置模型，优化器为adam，损失函数为，指标为准确率
         model.compile(
             optimizer=adam,
             loss='categorical_crossentropy',
             metrics=['accuracy'],
         )
 
-        # Model summary
+        # 打印出模型概况
         model.summary()
-        # Model conig details
+        # 返回包含模型配置信息的Python字典
         model.get_config()
-
+        # 保存模型结构图
         plot_model(model, to_file='model.png', show_shapes=True)
-
-
+        # 拟合模型
         hist = model.fit(
             x=train_img_list,
             y=train_lable_list,
@@ -130,28 +146,30 @@ class Training():
             shuffle=True,
             validation_data=(test_img_list, test_lable_list)
         )
-
-
+        # 模型可视化参数
         pred_y = model.predict(test_img_list)
         pred_label = np.argmax(pred_y, axis=1)
         true_label = np.argmax(test_lable_list, axis=1)
 
+        # 混淆矩阵数据
         confusion_mat = confusion_matrix(true_label, pred_label)
-
+        # 混淆矩阵可视化
         self.plot_sonfusion_matrix(confusion_mat, classes=range(5))
 
         self.visualizeHis(hist)
-
+        # 保存模型
         model.save(self.model_name)
+        K.clear_session()
 
     def plot_sonfusion_matrix(self, cm, classes, normalize=False, title='Confusion matrix', cmap=plt.cm.Blues):
+        # 混淆矩阵可视化
         plt.figure(1, figsize=(7, 5))
 
         plt.imshow(cm, interpolation='nearest', cmap=cmap)
         plt.title(title)
         plt.colorbar()
 
-        Gesturetype = ['666', 'yech', 'stop', 'punch', 'OK']
+        Gesturetype = self.type
 
         tick_marks = np.arange(len(classes))
         # plt.xticks(tick_marks, classes, rotation=45)
@@ -168,7 +186,7 @@ class Training():
         plt.xlabel('Predict label')
 
     def visualizeHis(self, hist):
-        # visualizing losses and accuracy
+        # 损失函数和准确率可视化
 
         train_loss = hist.history['loss']
         val_loss = hist.history['val_loss']
@@ -184,8 +202,6 @@ class Training():
         plt.title('train_loss vs val_loss')
         plt.grid(True)
         plt.legend(['train', 'val'])
-        # print plt.style.available # use bmh, classic,ggplot for big pictures
-        # plt.style.use(['classic'])
 
         plt.figure(3, figsize=(7, 5))
         plt.plot(xc, train_acc)
