@@ -1,6 +1,10 @@
 # CNN_Gesture 一个实时的手势识别脚本
 <<<<<<< HEAD
+<<<<<<< HEAD
 基于Opencv+keras的实时手势识别系统，准确率约96%，可录制数据集。
+=======
+基于Opencv+keras的实时手势识别系统， 准确率约96%  
+>>>>>>> ad450b3d952dc59bfb0a82e8109f15b4bf57955c
   
 python3.6 + opencv + keras + numpy + PIL  
   
